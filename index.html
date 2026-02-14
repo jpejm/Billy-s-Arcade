@@ -1,0 +1,2175 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arcade - Tetris & Shooter</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+            overflow-x: hidden;
+        }
+
+        body.shooter-mode {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+        }
+
+        body.tetris-mode {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .game-container {
+            display: none;
+        }
+
+        .game-container.active {
+            display: flex;
+            gap: 30px;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: flex-start;
+        }
+
+        .game-section {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+
+        canvas {
+            border: 4px solid #333;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            display: block;
+        }
+
+        #tetrisCanvas {
+            background: #000;
+        }
+
+        #shooterCanvas {
+            background: #0a0a0a;
+        }
+
+        .side-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            min-width: 250px;
+        }
+
+        .info-box {
+            padding: 20px;
+            border-radius: 15px;
+            color: white;
+        }
+
+        .tetris-mode .info-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .shooter-mode .info-box {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .info-box h3 {
+            margin-bottom: 15px;
+            font-size: 1.3em;
+            text-align: center;
+        }
+
+        .stat, .score-display, .level-display {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+            font-size: 1.1em;
+        }
+
+        .score-display {
+            font-size: 2.5em;
+            font-weight: bold;
+            text-align: center;
+            justify-content: center;
+        }
+
+        .level-display {
+            font-size: 1.5em;
+            text-align: center;
+            justify-content: center;
+        }
+
+        .stat-value {
+            font-weight: bold;
+            font-size: 1.3em;
+        }
+
+        .controls {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            color: #333;
+        }
+
+        .controls h4 {
+            margin-bottom: 10px;
+        }
+
+        .tetris-mode .controls h4 {
+            color: #667eea;
+        }
+
+        .shooter-mode .controls h4 {
+            color: #f5576c;
+        }
+
+        .controls p {
+            margin: 5px 0;
+            font-size: 0.9em;
+        }
+
+        .button {
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+
+        .button.primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .button.secondary {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .button.success {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        }
+
+        .leaderboard {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+            min-width: 350px;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .leaderboard h2 {
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 2em;
+        }
+
+        .tetris-mode .leaderboard h2 {
+            color: #667eea;
+        }
+
+        .shooter-mode .leaderboard h2 {
+            color: #f5576c;
+        }
+
+        .leaderboard-list {
+            list-style: none;
+        }
+
+        .leaderboard-item {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: transform 0.2s;
+        }
+
+        .leaderboard-item:hover {
+            transform: translateX(5px);
+        }
+
+        .leaderboard-item.rank-1 {
+            background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+            font-weight: bold;
+        }
+
+        .leaderboard-item.rank-2 {
+            background: linear-gradient(135deg, #c0c0c0 0%, #d3d3d3 100%);
+            font-weight: bold;
+        }
+
+        .leaderboard-item.rank-3 {
+            background: linear-gradient(135deg, #cd7f32 0%, #d4a574 100%);
+            font-weight: bold;
+        }
+
+        .rank {
+            font-size: 1.5em;
+            font-weight: bold;
+            min-width: 40px;
+        }
+
+        .tetris-mode .rank {
+            color: #667eea;
+        }
+
+        .shooter-mode .rank {
+            color: #f5576c;
+        }
+
+        .player-info {
+            flex: 1;
+            margin: 0 15px;
+        }
+
+        .player-name {
+            font-size: 1.1em;
+            font-weight: bold;
+        }
+
+        .player-score {
+            font-size: 1.3em;
+            font-weight: bold;
+        }
+
+        .tetris-mode .player-score {
+            color: #764ba2;
+        }
+
+        .shooter-mode .player-score {
+            color: #f093fb;
+        }
+
+        .empty-leaderboard {
+            text-align: center;
+            color: #999;
+            padding: 40px 20px;
+            font-style: italic;
+        }
+
+        .tab-button {
+            background: #e9ecef;
+            border: none;
+            padding: 10px 15px;
+            margin: 0 5px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            color: #666;
+            transition: all 0.3s;
+        }
+
+        .tab-button.active {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+
+        .tab-button:hover {
+            transform: translateY(-2px);
+        }
+
+        .game-over-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            max-width: 400px;
+        }
+
+        .modal-content h2 {
+            margin-bottom: 20px;
+            font-size: 2.5em;
+        }
+
+        .tetris-mode .modal-content h2 {
+            color: #764ba2;
+        }
+
+        .shooter-mode .modal-content h2 {
+            color: #f5576c;
+        }
+
+        .modal-content input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #667eea;
+            border-radius: 10px;
+            font-size: 1.1em;
+            margin: 20px 0;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .next-piece {
+            background: rgba(255,255,255,0.2);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .game-container-wrapper {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        @media (max-width: 768px) {
+            .game-container.active {
+                flex-direction: column;
+            }
+            
+            .tab-button {
+                padding: 8px 10px;
+                font-size: 0.9em;
+            }
+
+            h1 {
+                font-size: 2em;
+            }
+
+            .game-container-wrapper {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+</head>
+<body class="tetris-mode">
+    <!-- TETRIS GAME -->
+    <div id="tetrisGame" class="game-container active">
+        <div class="game-section">
+            <h1>🎮 TETRIS 🎮</h1>
+            <div class="game-container-wrapper">
+                <canvas id="tetrisCanvas" width="300" height="600"></canvas>
+                
+                <div class="side-panel">
+                    <div class="info-box">
+                        <h3>Pontuação</h3>
+                        <div class="score-display" id="tetrisScore">0</div>
+                        <div class="level-display">Nível: <span id="tetrisLevel">1</span></div>
+                    </div>
+
+                    <div class="info-box">
+                        <h3>Próxima Peça</h3>
+                        <canvas id="nextPieceCanvas" width="120" height="120"></canvas>
+                    </div>
+
+                    <div class="controls">
+                        <h4>⌨️ Controles</h4>
+                        <p>← → Mover</p>
+                        <p>↓ Descer rápido</p>
+                        <p>↑ Rotacionar</p>
+                        <p>Espaço: Pausar</p>
+                    </div>
+
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 10px; margin-top: 10px;">
+                        <h4 style="color: #667eea; margin-bottom: 10px; text-align: center;">🔐 Código GOD</h4>
+                        <input type="text" id="tetrisCheatCode" placeholder="Digite o código..." 
+                            style="width: 100%; padding: 10px; border: 2px solid #667eea; border-radius: 8px; font-size: 1em; text-align: center;"
+                            onkeypress="if(event.key==='Enter') tetrisGame.checkCheatCode()">
+                        <button class="button primary" onclick="tetrisGame.checkCheatCode()" style="margin-top: 10px; font-size: 0.9em;">
+                            ✨ Ativar Código
+                        </button>
+                        <div id="tetrisCheatStatus" style="text-align: center; margin-top: 10px; font-weight: bold; color: #666;"></div>
+                        
+                        <div id="tetrisGodControls" style="display: none; margin-top: 15px;">
+                            <h4 style="color: #ff00ff; margin-bottom: 10px; text-align: center;">👑 Controles GOD</h4>
+                            <label style="display: block; margin-bottom: 5px; font-size: 0.9em;">Multiplicador de Pontos:</label>
+                            <input type="number" id="tetrisMultiplier" value="100000" min="1" max="10000000" 
+                                style="width: 100%; padding: 8px; border: 2px solid #ff00ff; border-radius: 8px; margin-bottom: 10px;"
+                                onchange="tetrisGame.updateMultiplier()">
+                            
+                            <label style="display: block; margin-bottom: 5px; font-size: 0.9em;">Escolher Peça (1-8):</label>
+                            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px;">
+                                <button class="button" onclick="tetrisGame.forcePiece(0)" style="padding: 10px 5px; font-size: 0.8em;">I</button>
+                                <button class="button" onclick="tetrisGame.forcePiece(1)" style="padding: 10px 5px; font-size: 0.8em;">O</button>
+                                <button class="button" onclick="tetrisGame.forcePiece(2)" style="padding: 10px 5px; font-size: 0.8em;">T</button>
+                                <button class="button" onclick="tetrisGame.forcePiece(3)" style="padding: 10px 5px; font-size: 0.8em;">L</button>
+                                <button class="button" onclick="tetrisGame.forcePiece(4)" style="padding: 10px 5px; font-size: 0.8em;">J</button>
+                                <button class="button" onclick="tetrisGame.forcePiece(5)" style="padding: 10px 5px; font-size: 0.8em;">S</button>
+                                <button class="button" onclick="tetrisGame.forcePiece(6)" style="padding: 10px 5px; font-size: 0.8em;">Z</button>
+                                <button class="button" onclick="tetrisGame.forcePiece(7)" style="padding: 10px 5px; font-size: 0.8em;">3x3</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button class="button primary" onclick="tetrisGame.restart()">🔄 Reiniciar</button>
+                    <button class="button success" onclick="tetrisGame.useHelp()" id="tetrisHelpButton">🤖 Ajuda: ON</button>
+                    <button class="button secondary" onclick="switchGame('shooter')">🔫 Jogar Shooter</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="leaderboard">
+            <h2>🏆 Top 10 Jogadores</h2>
+            
+            <div style="margin-bottom: 15px;">
+                <h4 style="text-align: center; color: #666; margin-bottom: 10px;">👑 Modo</h4>
+                <div style="display: flex; justify-content: center; gap: 5px; flex-wrap: wrap; margin-bottom: 15px;">
+                    <button class="tab-button active" onclick="tetrisGame.switchGodMode('all')" id="tetrisGodAllTab" style="font-size: 0.9em;">
+                        Todos
+                    </button>
+                    <button class="tab-button" onclick="tetrisGame.switchGodMode('normal')" id="tetrisGodNormalTab" style="font-size: 0.9em;">
+                        Normal
+                    </button>
+                    <button class="tab-button" onclick="tetrisGame.switchGodMode('god')" id="tetrisGodGodTab" style="font-size: 0.9em;">
+                        👑 GOD
+                    </button>
+                </div>
+            </div>
+            
+            <ul class="leaderboard-list" id="tetrisLeaderboard">
+                <li class="empty-leaderboard">Carregando placar...</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- SHOOTER GAME -->
+    <div id="shooterGame" class="game-container">
+        <div class="game-section">
+            <h1>🎯 RICOCHET SHOOTER 🔫</h1>
+            <canvas id="shooterCanvas" width="800" height="600"></canvas>
+        </div>
+
+        <div class="side-panel">
+            <div class="info-box">
+                <h3>📊 Estatísticas</h3>
+                <div class="stat">
+                    <span>Pontos:</span>
+                    <span class="stat-value" id="shooterScore">0</span>
+                </div>
+                <div class="stat">
+                    <span>Eliminados:</span>
+                    <span class="stat-value" id="shooterEnemies">0</span>
+                </div>
+                <div class="stat">
+                    <span>Escaparam:</span>
+                    <span class="stat-value" id="shooterEscaped" style="color: #ffff00;">0/10</span>
+                </div>
+                <div class="stat">
+                    <span>Acertos:</span>
+                    <span class="stat-value" id="shooterHits">0</span>
+                </div>
+                <div class="stat">
+                    <span>Precisão:</span>
+                    <span class="stat-value" id="shooterAccuracy">0%</span>
+                </div>
+            </div>
+
+            <div class="controls">
+                <h4>🎮 Controles</h4>
+                <p>⬆️⬇️ Mover para cima/baixo</p>
+                <p>🖱️ Mouse: Mirar</p>
+                <p>🔫 Clique/Segurar: Atirar</p>
+                <p>💡 Balas ricocheteiam nas paredes!</p>
+            </div>
+
+            <div style="background: #f8f9fa; padding: 15px; border-radius: 10px; margin-top: 10px;">
+                <h4 style="color: #f5576c; margin-bottom: 10px; text-align: center;">🔐 Código Secreto</h4>
+                <input type="text" id="cheatCode" placeholder="Digite o código..." 
+                    style="width: 100%; padding: 10px; border: 2px solid #f093fb; border-radius: 8px; font-size: 1em; text-align: center;"
+                    onkeypress="if(event.key==='Enter') shooterGame.checkCheatCode()">
+                <button class="button secondary" onclick="shooterGame.checkCheatCode()" style="margin-top: 10px; font-size: 0.9em;">
+                    ✨ Ativar Código
+                </button>
+                <div id="cheatStatus" style="text-align: center; margin-top: 10px; font-weight: bold; color: #666;"></div>
+            </div>
+
+            <button class="button secondary" onclick="shooterGame.restart()">🔄 Reiniciar</button>
+            <button class="button success" onclick="shooterGame.changeSpeed()" id="speedButton">⚡ Velocidade: 1x</button>
+            <button class="button primary" onclick="shooterGame.toggleShootMode()" id="shootModeButton">🔫 Modo: Clique</button>
+            <button class="button primary" onclick="switchGame('tetris')">🎮 Jogar Tetris</button>
+        </div>
+
+        <div class="leaderboard">
+            <h2>🏆 Rankings</h2>
+            
+            <div style="margin-bottom: 15px;">
+                <h4 style="text-align: center; color: #666; margin-bottom: 10px;">👑 Modo de Jogo</h4>
+                <div style="display: flex; justify-content: center; gap: 5px; flex-wrap: wrap; margin-bottom: 15px;">
+                    <button class="tab-button active" onclick="shooterGame.switchGodMode('all')" id="godAllTab" style="font-size: 0.9em;">
+                        Todos
+                    </button>
+                    <button class="tab-button" onclick="shooterGame.switchGodMode('normal')" id="godNormalTab" style="font-size: 0.9em;">
+                        Normal
+                    </button>
+                    <button class="tab-button" onclick="shooterGame.switchGodMode('god')" id="godGodTab" style="font-size: 0.9em;">
+                        👑 GOD
+                    </button>
+                </div>
+            </div>
+            
+            <div style="margin-bottom: 15px;">
+                <h4 style="text-align: center; color: #666; margin-bottom: 10px;">⚡ Velocidade</h4>
+                <div style="display: flex; justify-content: center; gap: 5px; flex-wrap: wrap; margin-bottom: 15px;">
+                    <button class="tab-button active" onclick="shooterGame.switchSpeed('all')" id="speedAllTab" style="font-size: 0.9em;">
+                        Todas
+                    </button>
+                    <button class="tab-button" onclick="shooterGame.switchSpeed(1)" id="speed1Tab" style="font-size: 0.9em;">
+                        1x
+                    </button>
+                    <button class="tab-button" onclick="shooterGame.switchSpeed(1.5)" id="speed1.5Tab" style="font-size: 0.9em;">
+                        1.5x
+                    </button>
+                    <button class="tab-button" onclick="shooterGame.switchSpeed(2)" id="speed2Tab" style="font-size: 0.9em;">
+                        2x
+                    </button>
+                    <button class="tab-button" onclick="shooterGame.switchSpeed(3)" id="speed3Tab" style="font-size: 0.9em;">
+                        3x
+                    </button>
+                </div>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <h4 style="text-align: center; color: #666; margin-bottom: 10px;">📊 Ordenar por</h4>
+                <div style="display: flex; justify-content: center; gap: 5px; flex-wrap: wrap;">
+                    <button class="tab-button active" onclick="shooterGame.switchTab('score')" id="scoreTab">
+                        💰 Pontuação
+                    </button>
+                    <button class="tab-button" onclick="shooterGame.switchTab('enemies')" id="enemiesTab">
+                        ☠️ Eliminações
+                    </button>
+                    <button class="tab-button" onclick="shooterGame.switchTab('time')" id="timeTab">
+                        ⏱️ Tempo
+                    </button>
+                </div>
+            </div>
+            
+            <ul class="leaderboard-list" id="shooterLeaderboard">
+                <li class="empty-leaderboard">Carregando placar...</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- GAME OVER MODALS -->
+    <div class="game-over-modal" id="tetrisGameOverModal">
+        <div class="modal-content">
+            <h2>Game Over!</h2>
+            <p style="font-size: 1.5em; margin: 20px 0;">Pontuação: <strong id="tetrisFinalScore">0</strong></p>
+            <input type="text" id="tetrisPlayerName" placeholder="Digite seu nome" maxlength="20">
+            <div class="modal-buttons">
+                <button class="button primary" onclick="tetrisGame.saveScore()">💾 Salvar Pontuação</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="game-over-modal" id="shooterGameOverModal">
+        <div class="modal-content">
+            <h2>Game Over!</h2>
+            <p style="font-size: 1.5em; margin: 20px 0;">Pontuação: <strong id="shooterFinalScore">0</strong></p>
+            <p style="font-size: 1.2em; margin: 10px 0;">Inimigos Eliminados: <strong id="shooterFinalEnemies">0</strong></p>
+            <input type="text" id="shooterPlayerName" placeholder="Digite seu nome" maxlength="20">
+            <div class="modal-buttons">
+                <button class="button secondary" onclick="shooterGame.saveScore()">💾 Salvar Pontuação</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // GAME SWITCHER
+        let currentGame = 'tetris';
+
+        function switchGame(game) {
+            // Pausar jogo atual
+            if (currentGame === 'tetris' && tetrisGame) {
+                tetrisGame.paused = true;
+                tetrisGame.gameOver = true;
+            } else if (currentGame === 'shooter' && shooterGame) {
+                shooterGame.gameOver = true;
+            }
+
+            // Trocar jogo
+            currentGame = game;
+            document.getElementById('tetrisGame').classList.remove('active');
+            document.getElementById('shooterGame').classList.remove('active');
+            document.body.classList.remove('tetris-mode', 'shooter-mode');
+
+            if (game === 'tetris') {
+                document.getElementById('tetrisGame').classList.add('active');
+                document.body.classList.add('tetris-mode');
+                if (!tetrisGame) {
+                    tetrisGame = new TetrisGame();
+                } else {
+                    tetrisGame.restart();
+                }
+            } else {
+                document.getElementById('shooterGame').classList.add('active');
+                document.body.classList.add('shooter-mode');
+                if (!shooterGame) {
+                    shooterGame = new ShooterGame();
+                } else {
+                    shooterGame.restart();
+                }
+            }
+        }
+
+        // TETRIS GAME CODE
+        const COLS = 10;
+        const ROWS = 20;
+        const BLOCK_SIZE = 30;
+        const COLORS = [
+            '#000000',
+            '#FF0D72',
+            '#0DC2FF',
+            '#0DFF72',
+            '#F538FF',
+            '#FF8E0D',
+            '#FFE138',
+            '#3877FF',
+            '#FF1493'
+        ];
+
+        const SHAPES = [
+            [[1,1,1,1]],
+            [[1,1],[1,1]],
+            [[1,1,1],[0,1,0]],
+            [[1,1,1],[1,0,0]],
+            [[1,1,1],[0,0,1]],
+            [[1,1,0],[0,1,1]],
+            [[0,1,1],[1,1,0]],
+            [[1,1,1],[1,1,1],[1,1,1]]
+        ];
+
+        class TetrisGame {
+            constructor() {
+                this.canvas = document.getElementById('tetrisCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.nextCanvas = document.getElementById('nextPieceCanvas');
+                this.nextCtx = this.nextCanvas.getContext('2d');
+                
+                this.score = 0;
+                this.level = 1;
+                this.lines = 0;
+                this.gameOver = false;
+                this.paused = false;
+                this.autoHelp = true;
+                this.helpActive = false;
+                
+                this.godMode = false;
+                this.scoreMultiplier = 1;
+                this.forcedPieceIndex = null;
+                this.currentGodModeFilter = 'all';
+                
+                this.board = this.createBoard();
+                this.currentPiece = null;
+                this.nextPiece = null;
+                
+                this.dropCounter = 0;
+                this.dropInterval = 1000;
+                this.lastTime = 0;
+
+                this.init();
+            }
+
+            createBoard() {
+                return Array.from({ length: ROWS }, () => Array(COLS).fill(0));
+            }
+
+            init() {
+                this.currentPiece = this.createPiece();
+                this.nextPiece = this.createPiece();
+                this.drawNextPiece();
+                this.setupControls();
+                this.update();
+                this.loadLeaderboard();
+            }
+
+            createPiece() {
+                // GOD MODE: usar peça forçada se disponível
+                if (this.godMode && this.forcedPieceIndex !== null) {
+                    const pieceIndex = this.forcedPieceIndex;
+                    this.forcedPieceIndex = null; // Resetar após usar
+                    
+                    return {
+                        shape: SHAPES[pieceIndex],
+                        color: pieceIndex + 1,
+                        x: Math.floor(COLS / 2) - Math.floor(SHAPES[pieceIndex][0].length / 2),
+                        y: 0
+                    };
+                }
+                
+                if (this.autoHelp && this.helpActive) {
+                    const bestPieceIndex = this.getBestPieceForSituation();
+                    this.helpActive = false;
+                    
+                    const canvas = this.nextCanvas;
+                    const originalBg = canvas.style.background;
+                    canvas.style.background = 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)';
+                    setTimeout(() => {
+                        canvas.style.background = originalBg;
+                    }, 300);
+                    
+                    return {
+                        shape: SHAPES[bestPieceIndex],
+                        color: bestPieceIndex + 1,
+                        x: Math.floor(COLS / 2) - Math.floor(SHAPES[bestPieceIndex][0].length / 2),
+                        y: 0
+                    };
+                }
+                
+                const shapeIndex = Math.floor(Math.random() * SHAPES.length);
+                return {
+                    shape: SHAPES[shapeIndex],
+                    color: shapeIndex + 1,
+                    x: Math.floor(COLS / 2) - Math.floor(SHAPES[shapeIndex][0].length / 2),
+                    y: 0
+                };
+            }
+
+            drawBoard() {
+                this.ctx.fillStyle = '#000';
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+                for (let y = 0; y < ROWS; y++) {
+                    for (let x = 0; x < COLS; x++) {
+                        if (this.board[y][x]) {
+                            this.ctx.fillStyle = COLORS[this.board[y][x]];
+                            this.ctx.fillRect(x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE - 1, BLOCK_SIZE - 1);
+                        }
+                    }
+                }
+
+                if (this.currentPiece) {
+                    this.ctx.fillStyle = COLORS[this.currentPiece.color];
+                    this.currentPiece.shape.forEach((row, y) => {
+                        row.forEach((value, x) => {
+                            if (value) {
+                                this.ctx.fillRect(
+                                    (this.currentPiece.x + x) * BLOCK_SIZE,
+                                    (this.currentPiece.y + y) * BLOCK_SIZE,
+                                    BLOCK_SIZE - 1,
+                                    BLOCK_SIZE - 1
+                                );
+                            }
+                        });
+                    });
+                }
+            }
+
+            drawNextPiece() {
+                this.nextCtx.fillStyle = '#000';
+                this.nextCtx.fillRect(0, 0, this.nextCanvas.width, this.nextCanvas.height);
+
+                if (this.nextPiece) {
+                    const offsetX = (4 - this.nextPiece.shape[0].length) / 2;
+                    const offsetY = (4 - this.nextPiece.shape.length) / 2;
+
+                    this.nextCtx.fillStyle = COLORS[this.nextPiece.color];
+                    this.nextPiece.shape.forEach((row, y) => {
+                        row.forEach((value, x) => {
+                            if (value) {
+                                this.nextCtx.fillRect(
+                                    (offsetX + x) * BLOCK_SIZE,
+                                    (offsetY + y) * BLOCK_SIZE,
+                                    BLOCK_SIZE - 1,
+                                    BLOCK_SIZE - 1
+                                );
+                            }
+                        });
+                    });
+                }
+            }
+
+            collide(piece, x, y) {
+                for (let py = 0; py < piece.shape.length; py++) {
+                    for (let px = 0; px < piece.shape[py].length; px++) {
+                        if (piece.shape[py][px]) {
+                            const newX = x + px;
+                            const newY = y + py;
+                            
+                            if (newX < 0 || newX >= COLS || newY >= ROWS) {
+                                return true;
+                            }
+                            if (newY >= 0 && this.board[newY][newX]) {
+                                return true;
+                            }
+                        }
+                    }
+                }
+                return false;
+            }
+
+            merge() {
+                this.currentPiece.shape.forEach((row, y) => {
+                    row.forEach((value, x) => {
+                        if (value) {
+                            const boardY = this.currentPiece.y + y;
+                            const boardX = this.currentPiece.x + x;
+                            if (boardY >= 0) {
+                                this.board[boardY][boardX] = this.currentPiece.color;
+                            }
+                        }
+                    });
+                });
+            }
+
+            clearLines() {
+                let linesCleared = 0;
+                
+                for (let y = ROWS - 1; y >= 0; y--) {
+                    if (this.board[y].every(cell => cell !== 0)) {
+                        this.board.splice(y, 1);
+                        this.board.unshift(Array(COLS).fill(0));
+                        linesCleared++;
+                        y++;
+                    }
+                }
+
+                if (linesCleared > 0) {
+                    this.lines += linesCleared;
+                    const baseScore = [0, 100, 300, 500, 800][linesCleared] * this.level;
+                    this.score += baseScore * this.scoreMultiplier;
+                    this.level = Math.floor(this.lines / 10) + 1;
+                    this.dropInterval = Math.max(100, 1000 - (this.level - 1) * 100);
+                    this.updateScore();
+                }
+            }
+
+            rotate() {
+                const rotated = this.currentPiece.shape[0].map((_, i) =>
+                    this.currentPiece.shape.map(row => row[i]).reverse()
+                );
+
+                const previousShape = this.currentPiece.shape;
+                this.currentPiece.shape = rotated;
+
+                if (this.collide(this.currentPiece, this.currentPiece.x, this.currentPiece.y)) {
+                    this.currentPiece.shape = previousShape;
+                }
+            }
+
+            move(dir) {
+                this.currentPiece.x += dir;
+                if (this.collide(this.currentPiece, this.currentPiece.x, this.currentPiece.y)) {
+                    this.currentPiece.x -= dir;
+                }
+            }
+
+            drop() {
+                this.currentPiece.y++;
+                if (this.collide(this.currentPiece, this.currentPiece.x, this.currentPiece.y)) {
+                    this.currentPiece.y--;
+                    this.merge();
+                    this.clearLines();
+                    
+                    if (this.autoHelp) {
+                        const analysis = this.analyzeBoard();
+                        if (analysis.deepHoles > 1 || analysis.needsLine || analysis.holes > 5) {
+                            this.helpActive = true;
+                        }
+                    }
+                    
+                    this.currentPiece = this.nextPiece;
+                    this.nextPiece = this.createPiece();
+                    this.drawNextPiece();
+
+                    if (this.collide(this.currentPiece, this.currentPiece.x, this.currentPiece.y)) {
+                        this.endGame();
+                    }
+                }
+                this.dropCounter = 0;
+            }
+
+            hardDrop() {
+                while (!this.collide(this.currentPiece, this.currentPiece.x, this.currentPiece.y + 1)) {
+                    this.currentPiece.y++;
+                    this.score += 2;
+                }
+                this.updateScore();
+                this.drop();
+            }
+
+            update(time = 0) {
+                if (this.gameOver || this.paused) {
+                    return;
+                }
+
+                const deltaTime = time - this.lastTime;
+                this.lastTime = time;
+                this.dropCounter += deltaTime;
+
+                if (this.dropCounter > this.dropInterval) {
+                    this.drop();
+                }
+
+                this.drawBoard();
+                requestAnimationFrame(this.update.bind(this));
+            }
+
+            updateScore() {
+                document.getElementById('tetrisScore').textContent = this.score;
+                document.getElementById('tetrisLevel').textContent = this.level;
+            }
+
+            setupControls() {
+                document.addEventListener('keydown', (e) => {
+                    if (this.gameOver || currentGame !== 'tetris') return;
+
+                    if (e.key === ' ') {
+                        e.preventDefault();
+                        this.paused = !this.paused;
+                        if (!this.paused) {
+                            this.update();
+                        }
+                    }
+
+                    if (this.paused) return;
+
+                    switch(e.key) {
+                        case 'ArrowLeft':
+                            e.preventDefault();
+                            this.move(-1);
+                            break;
+                        case 'ArrowRight':
+                            e.preventDefault();
+                            this.move(1);
+                            break;
+                        case 'ArrowDown':
+                            e.preventDefault();
+                            this.drop();
+                            break;
+                        case 'ArrowUp':
+                            e.preventDefault();
+                            this.rotate();
+                            break;
+                    }
+                });
+            }
+
+            endGame() {
+                this.gameOver = true;
+                document.getElementById('tetrisFinalScore').textContent = this.score;
+                document.getElementById('tetrisGameOverModal').style.display = 'flex';
+            }
+
+            analyzeBoard() {
+                const analysis = {
+                    holes: 0,
+                    deepHoles: 0,
+                    columnHeights: Array(COLS).fill(0),
+                    gaps: [],
+                    needsLine: false,
+                    needsSquare: false,
+                    needsL: false,
+                    needsZ: false
+                };
+
+                for (let x = 0; x < COLS; x++) {
+                    for (let y = 0; y < ROWS; y++) {
+                        if (this.board[y][x] !== 0) {
+                            analysis.columnHeights[x] = ROWS - y;
+                            break;
+                        }
+                    }
+                }
+
+                for (let x = 0; x < COLS; x++) {
+                    let foundBlock = false;
+                    for (let y = 0; y < ROWS; y++) {
+                        if (this.board[y][x] !== 0) {
+                            foundBlock = true;
+                        } else if (foundBlock) {
+                            analysis.holes++;
+                            if (ROWS - y > 5) {
+                                analysis.deepHoles++;
+                            }
+                        }
+                    }
+                }
+
+                for (let y = ROWS - 1; y >= 0; y--) {
+                    const filled = this.board[y].filter(cell => cell !== 0).length;
+                    if (filled >= 9) {
+                        analysis.needsLine = true;
+                        break;
+                    }
+                }
+
+                const maxHeight = Math.max(...analysis.columnHeights);
+                const minHeight = Math.min(...analysis.columnHeights);
+                if (maxHeight - minHeight > 4) {
+                    analysis.needsL = true;
+                }
+
+                for (let x = 0; x < COLS - 2; x++) {
+                    if (Math.abs(analysis.columnHeights[x] - analysis.columnHeights[x + 1]) === 1 &&
+                        Math.abs(analysis.columnHeights[x + 1] - analysis.columnHeights[x + 2]) === 1) {
+                        analysis.needsZ = true;
+                    }
+                }
+
+                for (let y = 0; y < ROWS - 1; y++) {
+                    for (let x = 0; x < COLS - 1; x++) {
+                        if (this.board[y][x] === 0 && this.board[y][x + 1] === 0 &&
+                            this.board[y + 1][x] === 0 && this.board[y + 1][x + 1] === 0) {
+                            if (y === ROWS - 2 || this.board[y + 2][x] !== 0 || this.board[y + 2][x + 1] !== 0) {
+                                analysis.needsSquare = true;
+                            }
+                        }
+                    }
+                }
+
+                return analysis;
+            }
+
+            getBestPieceForSituation() {
+                const analysis = this.analyzeBoard();
+                
+                if (analysis.needsLine) {
+                    return 0;
+                }
+
+                if (analysis.deepHoles > 3 || analysis.holes > 8) {
+                    return 7;
+                }
+
+                if (analysis.needsSquare) {
+                    return 1;
+                }
+
+                if (analysis.needsL) {
+                    const random = Math.random();
+                    if (random < 0.25) return 3;
+                    else if (random < 0.5) return 4;
+                    else if (random < 0.75) return 2;
+                    else return 7;
+                }
+
+                if (analysis.needsZ) {
+                    return Math.random() < 0.5 ? 5 : 6;
+                }
+
+                if (analysis.holes > 3) {
+                    return 2;
+                }
+
+                const versatilePieces = [2, 3, 4];
+                return versatilePieces[Math.floor(Math.random() * versatilePieces.length)];
+            }
+
+            useHelp() {
+                this.autoHelp = !this.autoHelp;
+                
+                const button = document.getElementById('tetrisHelpButton');
+                if (this.autoHelp) {
+                    button.textContent = '🤖 Ajuda: ON';
+                    button.classList.remove('primary');
+                    button.classList.add('success');
+                } else {
+                    button.textContent = '💤 Ajuda: OFF';
+                    button.classList.remove('success');
+                    button.classList.add('primary');
+                }
+            }
+
+            checkCheatCode() {
+                const input = document.getElementById('tetrisCheatCode');
+                const statusDiv = document.getElementById('tetrisCheatStatus');
+                const godControls = document.getElementById('tetrisGodControls');
+                const code = input.value.trim();
+                
+                if (code === 'Billy1314') {
+                    this.godMode = true;
+                    this.scoreMultiplier = parseInt(document.getElementById('tetrisMultiplier').value) || 100000;
+                    
+                    statusDiv.innerHTML = '✅ <span style="color: #ff00ff;">MODO GOD ATIVADO!</span>';
+                    statusDiv.style.animation = 'pulse 1s infinite';
+                    input.value = '';
+                    input.style.borderColor = '#ff00ff';
+                    input.style.background = '#ffe6ff';
+                    
+                    godControls.style.display = 'block';
+                    
+                    setTimeout(() => {
+                        statusDiv.innerHTML = '👑 Escolha peças + Multiplicador ativo!';
+                    }, 2000);
+                    
+                } else if (code !== '') {
+                    statusDiv.innerHTML = '❌ <span style="color: #ff0000;">Código inválido!</span>';
+                    input.style.borderColor = '#ff0000';
+                    setTimeout(() => {
+                        statusDiv.innerHTML = '';
+                        input.style.borderColor = '#667eea';
+                        input.style.background = 'white';
+                    }, 2000);
+                }
+            }
+
+            updateMultiplier() {
+                if (this.godMode) {
+                    this.scoreMultiplier = parseInt(document.getElementById('tetrisMultiplier').value) || 1;
+                }
+            }
+
+            forcePiece(pieceIndex) {
+                if (this.godMode && !this.gameOver && !this.paused) {
+                    this.forcedPieceIndex = pieceIndex;
+                    // Fazer a próxima peça ser a escolhida
+                    this.nextPiece = {
+                        shape: SHAPES[pieceIndex],
+                        color: pieceIndex + 1,
+                        x: Math.floor(COLS / 2) - Math.floor(SHAPES[pieceIndex][0].length / 2),
+                        y: 0
+                    };
+                    this.drawNextPiece();
+                }
+            }
+
+            async saveScore() {
+                const playerName = document.getElementById('tetrisPlayerName').value.trim();
+                if (!playerName) {
+                    alert('Por favor, digite seu nome!');
+                    return;
+                }
+
+                try {
+                    const scoreData = {
+                        name: playerName,
+                        score: this.score,
+                        level: this.level,
+                        godMode: this.godMode,
+                        multiplier: this.scoreMultiplier,
+                        date: new Date().toISOString()
+                    };
+
+                    await window.storage.set(`tetris_score_${Date.now()}`, JSON.stringify(scoreData), true);
+                    
+                    document.getElementById('tetrisGameOverModal').style.display = 'none';
+                    await this.loadLeaderboard();
+                    this.restart();
+                } catch (error) {
+                    console.error('Erro ao salvar pontuação:', error);
+                    alert('Erro ao salvar pontuação. Tente novamente.');
+                }
+            }
+
+            async loadLeaderboard() {
+                try {
+                    const result = await window.storage.list('tetris_score_', true);
+                    
+                    if (!result || !result.keys || result.keys.length === 0) {
+                        document.getElementById('tetrisLeaderboard').innerHTML = 
+                            '<li class="empty-leaderboard">Nenhuma pontuação ainda. Seja o primeiro!</li>';
+                        return;
+                    }
+
+                    const scores = [];
+                    for (const key of result.keys) {
+                        try {
+                            const data = await window.storage.get(key, true);
+                            if (data && data.value) {
+                                const scoreData = JSON.parse(data.value);
+                                if (scoreData.godMode === undefined) scoreData.godMode = false;
+                                if (scoreData.multiplier === undefined) scoreData.multiplier = 1;
+                                scores.push(scoreData);
+                            }
+                        } catch (e) {
+                            console.error('Erro ao carregar pontuação:', e);
+                        }
+                    }
+
+                    // Filtrar por modo god
+                    let filteredScores = scores;
+                    if (this.currentGodModeFilter === 'god') {
+                        filteredScores = scores.filter(score => score.godMode === true);
+                    } else if (this.currentGodModeFilter === 'normal') {
+                        filteredScores = scores.filter(score => score.godMode !== true);
+                    }
+
+                    filteredScores.sort((a, b) => b.score - a.score);
+                    const top10 = filteredScores.slice(0, 10);
+
+                    if (top10.length === 0) {
+                        const modeText = this.currentGodModeFilter === 'god' ? ' no modo GOD' : this.currentGodModeFilter === 'normal' ? ' no modo Normal' : '';
+                        document.getElementById('tetrisLeaderboard').innerHTML = 
+                            `<li class="empty-leaderboard">Nenhuma pontuação${modeText} ainda. Seja o primeiro!</li>`;
+                        return;
+                    }
+
+                    const html = top10.map((score, index) => {
+                        const rankClass = index < 3 ? `rank-${index + 1}` : '';
+                        const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '';
+                        
+                        let badges = '';
+                        if (this.currentGodModeFilter === 'all' && score.godMode) {
+                            badges += `<span style="background: linear-gradient(135deg, #ff00ff, #ff66ff); padding: 2px 6px; border-radius: 5px; font-size: 0.75em; margin-left: 5px; color: white; font-weight: bold;">👑 GOD ${score.multiplier}x</span>`;
+                        }
+                        
+                        return `
+                            <li class="leaderboard-item ${rankClass}">
+                                <span class="rank">${medal || (index + 1)}</span>
+                                <div class="player-info">
+                                    <div class="player-name">${score.name}${badges}</div>
+                                    <div style="color: #666; font-size: 0.9em;">Nível ${score.level}</div>
+                                </div>
+                                <span class="player-score">${score.score}</span>
+                            </li>
+                        `;
+                    }).join('');
+
+                    document.getElementById('tetrisLeaderboard').innerHTML = html;
+                } catch (error) {
+                    console.error('Erro ao carregar placar:', error);
+                    document.getElementById('tetrisLeaderboard').innerHTML = 
+                        '<li class="empty-leaderboard">Erro ao carregar placar</li>';
+                }
+            }
+
+            switchGodMode(mode) {
+                this.currentGodModeFilter = mode;
+                
+                document.querySelectorAll('#tetrisGodAllTab, #tetrisGodNormalTab, #tetrisGodGodTab').forEach(btn => btn.classList.remove('active'));
+                document.getElementById(`tetrisGod${mode.charAt(0).toUpperCase() + mode.slice(1)}Tab`).classList.add('active');
+                
+                this.loadLeaderboard();
+            }
+
+            restart() {
+                this.board = this.createBoard();
+                this.score = 0;
+                this.level = 1;
+                this.lines = 0;
+                this.gameOver = false;
+                this.paused = false;
+                this.dropCounter = 0;
+                this.dropInterval = 1000;
+                this.autoHelp = true;
+                this.helpActive = false;
+                this.godMode = false;
+                this.scoreMultiplier = 1;
+                this.forcedPieceIndex = null;
+                
+                // Resetar UI do god mode
+                const input = document.getElementById('tetrisCheatCode');
+                const statusDiv = document.getElementById('tetrisCheatStatus');
+                const godControls = document.getElementById('tetrisGodControls');
+                if (input) {
+                    input.value = '';
+                    input.style.borderColor = '#667eea';
+                    input.style.background = 'white';
+                }
+                if (statusDiv) {
+                    statusDiv.innerHTML = '';
+                }
+                if (godControls) {
+                    godControls.style.display = 'none';
+                }
+                
+                const button = document.getElementById('tetrisHelpButton');
+                button.textContent = '🤖 Ajuda: ON';
+                button.classList.remove('primary');
+                button.classList.add('success');
+                
+                this.updateScore();
+                this.currentPiece = this.createPiece();
+                this.nextPiece = this.createPiece();
+                this.drawNextPiece();
+                this.update();
+            }
+        }
+
+        // SHOOTER GAME CODE
+        class ShooterGame {
+            constructor() {
+                this.canvas = document.getElementById('shooterCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                
+                this.player = {
+                    x: 50,
+                    y: this.canvas.height / 2,
+                    width: 40,
+                    height: 40,
+                    speed: 5,
+                    color: '#00ff00'
+                };
+
+                this.bullets = [];
+                this.enemies = [];
+                this.particles = [];
+                
+                this.score = 0;
+                this.enemiesKilled = 0;
+                this.enemiesEscaped = 0;
+                this.maxEscaped = 10;
+                this.shotsFired = 0;
+                this.hits = 0;
+                this.gameOver = false;
+                this.startTime = Date.now();
+                this.playTime = 0;
+                
+                this.speedMultiplier = 1;
+                this.speedOptions = [1, 1.5, 2, 3];
+                this.currentSpeedIndex = 0;
+                
+                this.shootMode = 'click'; // 'click' ou 'hold'
+                this.isMouseDown = false;
+                this.shootCooldown = 0;
+                this.shootDelay = 10; // frames entre tiros no modo hold
+                
+                this.cheatMode = false;
+                this.cheatMultiplier = 100000;
+                this.cheatShootDelay = 0.06; // 1.000.000 tiros por segundo = muito mais balas por frame
+                this.speedCheat = false;
+                
+                this.currentTab = 'score';
+                this.currentSpeedFilter = 'all';
+                this.currentGodModeFilter = 'all'; // 'all', 'god', 'normal'
+                
+                this.keys = {};
+                this.mouseX = 0;
+                this.mouseY = 0;
+                
+                this.enemySpawnTimer = 0;
+                this.enemySpawnInterval = 120;
+                
+                this.init();
+            }
+
+            init() {
+                this.setupControls();
+                this.loadLeaderboard();
+                this.gameLoop();
+            }
+
+            setupControls() {
+                document.addEventListener('keydown', (e) => {
+                    if (currentGame === 'shooter') {
+                        this.keys[e.key] = true;
+                    }
+                });
+
+                document.addEventListener('keyup', (e) => {
+                    if (currentGame === 'shooter') {
+                        this.keys[e.key] = false;
+                    }
+                });
+
+                this.canvas.addEventListener('mousemove', (e) => {
+                    const rect = this.canvas.getBoundingClientRect();
+                    this.mouseX = e.clientX - rect.left;
+                    this.mouseY = e.clientY - rect.top;
+                });
+
+                this.canvas.addEventListener('mousedown', () => {
+                    if (!this.gameOver && currentGame === 'shooter') {
+                        this.isMouseDown = true;
+                        if (this.shootMode === 'click') {
+                            this.shoot();
+                        }
+                    }
+                });
+
+                this.canvas.addEventListener('mouseup', () => {
+                    this.isMouseDown = false;
+                });
+
+                this.canvas.addEventListener('mouseleave', () => {
+                    this.isMouseDown = false;
+                });
+
+                // Remover o listener de click antigo
+                this.canvas.addEventListener('click', (e) => {
+                    e.preventDefault();
+                });
+            }
+
+            shoot() {
+                const angle = Math.atan2(
+                    this.mouseY - this.player.y,
+                    this.mouseX - this.player.x
+                );
+
+                // GOD MODE: ~16 balas por frame = 1.000.000 por segundo em 60fps
+                const bulletsToShoot = this.cheatMode ? 16 : 1;
+                
+                for (let i = 0; i < bulletsToShoot; i++) {
+                    // Adicionar variação no ângulo quando em cheat mode
+                    const spreadAngle = this.cheatMode ? (Math.random() - 0.5) * 0.5 : 0;
+                    const finalAngle = angle + spreadAngle;
+                    
+                    this.bullets.push({
+                        x: this.player.x + this.player.width,
+                        y: this.player.y + this.player.height / 2,
+                        vx: Math.cos(finalAngle) * 8,
+                        vy: Math.sin(finalAngle) * 8,
+                        radius: this.cheatMode ? 2 : 5,
+                        bounces: 0,
+                        maxBounces: 5,
+                        color: this.cheatMode ? '#ff00ff' : '#ffff00'
+                    });
+                }
+
+                this.shotsFired++;
+            }
+
+            spawnEnemy() {
+                const size = 30 + Math.random() * 20;
+                const speedBoost = this.speedCheat ? 50 : 1; // WSPEED = 50x mais rápido
+                this.enemies.push({
+                    x: this.canvas.width,
+                    y: Math.random() * (this.canvas.height - size),
+                    width: size,
+                    height: size,
+                    speed: (1 + Math.random() * 2) * this.speedMultiplier * speedBoost,
+                    health: Math.floor(size / 15),
+                    maxHealth: Math.floor(size / 15),
+                    color: `hsl(${Math.random() * 360}, 70%, 50%)`
+                });
+            }
+
+            updatePlayer() {
+                if (this.keys['ArrowUp'] || this.keys['w']) {
+                    this.player.y -= this.player.speed;
+                }
+                if (this.keys['ArrowDown'] || this.keys['s']) {
+                    this.player.y += this.player.speed;
+                }
+
+                this.player.y = Math.max(0, Math.min(this.canvas.height - this.player.height, this.player.y));
+            }
+
+            updateBullets() {
+                for (let i = this.bullets.length - 1; i >= 0; i--) {
+                    const bullet = this.bullets[i];
+                    
+                    bullet.x += bullet.vx;
+                    bullet.y += bullet.vy;
+
+                    if (bullet.x - bullet.radius < 0 || bullet.x + bullet.radius > this.canvas.width) {
+                        bullet.vx *= -1;
+                        bullet.bounces++;
+                        this.createParticles(bullet.x, bullet.y, '#ffff00');
+                    }
+                    if (bullet.y - bullet.radius < 0 || bullet.y + bullet.radius > this.canvas.height) {
+                        bullet.vy *= -1;
+                        bullet.bounces++;
+                        this.createParticles(bullet.x, bullet.y, '#ffff00');
+                    }
+
+                    if (bullet.bounces > bullet.maxBounces) {
+                        this.bullets.splice(i, 1);
+                    }
+                }
+            }
+
+            updateEnemies() {
+                this.enemySpawnTimer++;
+                const speedBoost = this.speedCheat ? 50 : 1;
+                const adjustedInterval = Math.floor(this.enemySpawnInterval / (this.speedMultiplier * speedBoost));
+                if (this.enemySpawnTimer >= Math.max(1, adjustedInterval)) {
+                    this.spawnEnemy();
+                    this.enemySpawnTimer = 0;
+                    this.enemySpawnInterval = Math.max(60, this.enemySpawnInterval - 1);
+                }
+
+                for (let i = this.enemies.length - 1; i >= 0; i--) {
+                    const enemy = this.enemies[i];
+                    enemy.x -= enemy.speed;
+
+                    // Verificar colisão com player
+                    if (this.checkCollision(this.player, enemy)) {
+                        this.endGame();
+                        return;
+                    }
+
+                    // Inimigo escapou pela esquerda
+                    if (enemy.x + enemy.width < 0) {
+                        this.enemies.splice(i, 1);
+                        this.enemiesEscaped++;
+                        
+                        // Game over se 10 inimigos escaparem
+                        if (this.enemiesEscaped >= this.maxEscaped) {
+                            this.endGame();
+                            return;
+                        }
+                    }
+                }
+            }
+
+            checkBulletEnemyCollisions() {
+                for (let i = this.bullets.length - 1; i >= 0; i--) {
+                    const bullet = this.bullets[i];
+                    
+                    for (let j = this.enemies.length - 1; j >= 0; j--) {
+                        const enemy = this.enemies[j];
+                        
+                        const dx = bullet.x - (enemy.x + enemy.width / 2);
+                        const dy = bullet.y - (enemy.y + enemy.height / 2);
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        
+                        if (distance < bullet.radius + enemy.width / 2) {
+                            this.hits++;
+                            enemy.health--;
+                            
+                            this.createParticles(bullet.x, bullet.y, enemy.color);
+                            this.bullets.splice(i, 1);
+                            
+                            if (enemy.health <= 0) {
+                                const baseScore = Math.floor(enemy.maxHealth * 10);
+                                this.score += this.cheatMode ? baseScore * this.cheatMultiplier : baseScore;
+                                this.enemiesKilled++;
+                                this.createExplosion(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, enemy.color);
+                                this.enemies.splice(j, 1);
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+
+            createParticles(x, y, color) {
+                for (let i = 0; i < 5; i++) {
+                    this.particles.push({
+                        x: x,
+                        y: y,
+                        vx: (Math.random() - 0.5) * 4,
+                        vy: (Math.random() - 0.5) * 4,
+                        life: 30,
+                        color: color
+                    });
+                }
+            }
+
+            createExplosion(x, y, color) {
+                for (let i = 0; i < 20; i++) {
+                    this.particles.push({
+                        x: x,
+                        y: y,
+                        vx: (Math.random() - 0.5) * 8,
+                        vy: (Math.random() - 0.5) * 8,
+                        life: 40,
+                        color: color
+                    });
+                }
+            }
+
+            updateParticles() {
+                for (let i = this.particles.length - 1; i >= 0; i--) {
+                    const p = this.particles[i];
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.life--;
+                    
+                    if (p.life <= 0) {
+                        this.particles.splice(i, 1);
+                    }
+                }
+            }
+
+            checkCollision(rect1, rect2) {
+                return rect1.x < rect2.x + rect2.width &&
+                       rect1.x + rect1.width > rect2.x &&
+                       rect1.y < rect2.y + rect2.height &&
+                       rect1.y + rect1.height > rect2.y;
+            }
+
+            draw() {
+                this.ctx.fillStyle = '#0a0a0a';
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+                this.ctx.strokeStyle = '#1a1a1a';
+                this.ctx.lineWidth = 1;
+                for (let i = 0; i < this.canvas.width; i += 50) {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(i, 0);
+                    this.ctx.lineTo(i, this.canvas.height);
+                    this.ctx.stroke();
+                }
+                for (let i = 0; i < this.canvas.height; i += 50) {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(0, i);
+                    this.ctx.lineTo(this.canvas.width, i);
+                    this.ctx.stroke();
+                }
+
+                this.ctx.fillStyle = this.player.color;
+                this.ctx.fillRect(this.player.x, this.player.y, this.player.width, this.player.height);
+                
+                const angle = Math.atan2(this.mouseY - this.player.y, this.mouseX - this.player.x);
+                this.ctx.save();
+                this.ctx.translate(this.player.x + this.player.width / 2, this.player.y + this.player.height / 2);
+                this.ctx.rotate(angle);
+                this.ctx.fillStyle = '#00cc00';
+                this.ctx.fillRect(0, -5, 30, 10);
+                this.ctx.restore();
+
+                this.ctx.strokeStyle = '#ff0000';
+                this.ctx.lineWidth = 2;
+                this.ctx.beginPath();
+                this.ctx.arc(this.mouseX, this.mouseY, 15, 0, Math.PI * 2);
+                this.ctx.stroke();
+                this.ctx.beginPath();
+                this.ctx.moveTo(this.mouseX - 20, this.mouseY);
+                this.ctx.lineTo(this.mouseX + 20, this.mouseY);
+                this.ctx.stroke();
+                this.ctx.beginPath();
+                this.ctx.moveTo(this.mouseX, this.mouseY - 20);
+                this.ctx.lineTo(this.mouseX, this.mouseY + 20);
+                this.ctx.stroke();
+
+                for (const bullet of this.bullets) {
+                    this.ctx.fillStyle = bullet.color;
+                    this.ctx.shadowBlur = 10;
+                    this.ctx.shadowColor = bullet.color;
+                    this.ctx.beginPath();
+                    this.ctx.arc(bullet.x, bullet.y, bullet.radius, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    this.ctx.shadowBlur = 0;
+                }
+
+                for (const enemy of this.enemies) {
+                    this.ctx.fillStyle = enemy.color;
+                    this.ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+                    
+                    const healthPercent = enemy.health / enemy.maxHealth;
+                    this.ctx.fillStyle = '#ff0000';
+                    this.ctx.fillRect(enemy.x, enemy.y - 10, enemy.width, 5);
+                    this.ctx.fillStyle = '#00ff00';
+                    this.ctx.fillRect(enemy.x, enemy.y - 10, enemy.width * healthPercent, 5);
+                }
+
+                for (const p of this.particles) {
+                    const alpha = p.life / 40;
+                    this.ctx.fillStyle = p.color;
+                    this.ctx.globalAlpha = alpha;
+                    this.ctx.fillRect(p.x - 2, p.y - 2, 4, 4);
+                }
+                this.ctx.globalAlpha = 1;
+
+                // Indicador de alerta quando inimigos estão escapando
+                if (this.enemiesEscaped > 0) {
+                    this.ctx.fillStyle = '#ff0000';
+                    this.ctx.font = 'bold 24px Arial';
+                    this.ctx.textAlign = 'left';
+                    
+                    const warningText = `⚠️ ESCAPARAM: ${this.enemiesEscaped}/${this.maxEscaped}`;
+                    this.ctx.shadowColor = '#000000';
+                    this.ctx.shadowBlur = 5;
+                    this.ctx.fillText(warningText, 20, 40);
+                    this.ctx.shadowBlur = 0;
+                    
+                    // Barra de alerta
+                    const barWidth = 200;
+                    const barHeight = 20;
+                    const barX = 20;
+                    const barY = 50;
+                    
+                    // Fundo da barra
+                    this.ctx.fillStyle = '#333333';
+                    this.ctx.fillRect(barX, barY, barWidth, barHeight);
+                    
+                    // Progresso (quanto mais escapou, mais vermelho)
+                    const progress = this.enemiesEscaped / this.maxEscaped;
+                    this.ctx.fillStyle = progress >= 0.8 ? '#ff0000' : progress >= 0.6 ? '#ff8800' : '#ffaa00';
+                    this.ctx.fillRect(barX, barY, barWidth * progress, barHeight);
+                    
+                    // Borda
+                    this.ctx.strokeStyle = '#ffffff';
+                    this.ctx.lineWidth = 2;
+                    this.ctx.strokeRect(barX, barY, barWidth, barHeight);
+                }
+
+                // Indicador de MODO GOD
+                if (this.cheatMode) {
+                    this.ctx.save();
+                    this.ctx.fillStyle = '#ff00ff';
+                    this.ctx.font = 'bold 32px Arial';
+                    this.ctx.textAlign = 'center';
+                    this.ctx.shadowColor = '#000000';
+                    this.ctx.shadowBlur = 10;
+                    
+                    const godText = '⚡ GOD MODE ⚡';
+                    const x = this.canvas.width / 2;
+                    const y = 50;
+                    
+                    const opacity = Math.sin(Date.now() / 200) * 0.3 + 0.7;
+                    this.ctx.globalAlpha = opacity;
+                    this.ctx.fillText(godText, x, y);
+                    
+                    this.ctx.globalAlpha = 1;
+                    this.ctx.shadowBlur = 0;
+                    this.ctx.restore();
+                }
+
+                // Indicador de WSPEED
+                if (this.speedCheat) {
+                    this.ctx.save();
+                    this.ctx.fillStyle = '#00ffff';
+                    this.ctx.font = 'bold 32px Arial';
+                    this.ctx.textAlign = 'center';
+                    this.ctx.shadowColor = '#000000';
+                    this.ctx.shadowBlur = 10;
+                    
+                    const speedText = '🚀 WSPEED 🚀';
+                    const x = this.canvas.width / 2;
+                    const y = this.cheatMode ? 90 : 50;
+                    
+                    const opacity = Math.sin(Date.now() / 150) * 0.3 + 0.7;
+                    this.ctx.globalAlpha = opacity;
+                    this.ctx.fillText(speedText, x, y);
+                    
+                    this.ctx.globalAlpha = 1;
+                    this.ctx.shadowBlur = 0;
+                    this.ctx.restore();
+                }
+            }
+
+            updateStats() {
+                document.getElementById('shooterScore').textContent = this.score;
+                document.getElementById('shooterEnemies').textContent = this.enemiesKilled;
+                document.getElementById('shooterHits').textContent = this.hits;
+                
+                const escapedElement = document.getElementById('shooterEscaped');
+                escapedElement.textContent = `${this.enemiesEscaped}/${this.maxEscaped}`;
+                
+                // Mudar cor baseado em quantos escaparam
+                if (this.enemiesEscaped >= 8) {
+                    escapedElement.style.color = '#ff0000';
+                } else if (this.enemiesEscaped >= 6) {
+                    escapedElement.style.color = '#ff8800';
+                } else {
+                    escapedElement.style.color = '#ffff00';
+                }
+                
+                const accuracy = this.shotsFired > 0 ? Math.round((this.hits / this.shotsFired) * 100) : 0;
+                document.getElementById('shooterAccuracy').textContent = accuracy + '%';
+            }
+
+            gameLoop() {
+                if (!this.gameOver && currentGame === 'shooter') {
+                    this.updatePlayer();
+                    
+                    // Modo hold: atirar continuamente se o mouse estiver pressionado
+                    const activeShootDelay = this.cheatMode ? this.cheatShootDelay : this.shootDelay;
+                    
+                    if (this.shootMode === 'hold' && this.isMouseDown) {
+                        if (this.shootCooldown <= 0) {
+                            this.shoot();
+                            this.shootCooldown = activeShootDelay;
+                        }
+                    }
+                    
+                    if (this.shootCooldown > 0) {
+                        this.shootCooldown--;
+                    }
+                    
+                    this.updateBullets();
+                    this.updateEnemies();
+                    this.updateParticles();
+                    this.checkBulletEnemyCollisions();
+                    this.draw();
+                    this.updateStats();
+                    requestAnimationFrame(() => this.gameLoop());
+                }
+            }
+
+            endGame() {
+                this.gameOver = true;
+                this.playTime = Math.floor((Date.now() - this.startTime) / 1000);
+                document.getElementById('shooterFinalScore').textContent = this.score;
+                document.getElementById('shooterFinalEnemies').textContent = this.enemiesKilled;
+                document.getElementById('shooterGameOverModal').style.display = 'flex';
+            }
+
+            changeSpeed() {
+                this.currentSpeedIndex = (this.currentSpeedIndex + 1) % this.speedOptions.length;
+                this.speedMultiplier = this.speedOptions[this.currentSpeedIndex];
+                
+                // Atualizar velocidade dos inimigos existentes
+                for (const enemy of this.enemies) {
+                    const baseSpeed = enemy.speed / this.speedOptions[(this.currentSpeedIndex - 1 + this.speedOptions.length) % this.speedOptions.length];
+                    enemy.speed = baseSpeed * this.speedMultiplier;
+                }
+                
+                // Atualizar botão
+                const button = document.getElementById('speedButton');
+                button.textContent = `⚡ Velocidade: ${this.speedMultiplier}x`;
+                
+                // Feedback visual
+                if (this.speedMultiplier >= 3) {
+                    button.style.background = 'linear-gradient(135deg, #ff0000 0%, #ff6b6b 100%)';
+                } else if (this.speedMultiplier >= 2) {
+                    button.style.background = 'linear-gradient(135deg, #ff8e0d 0%, #ffa500 100%)';
+                } else if (this.speedMultiplier >= 1.5) {
+                    button.style.background = 'linear-gradient(135deg, #ffe138 0%, #ffd700 100%)';
+                } else {
+                    button.style.background = 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)';
+                }
+            }
+
+            toggleShootMode() {
+                this.shootMode = this.shootMode === 'click' ? 'hold' : 'click';
+                
+                const button = document.getElementById('shootModeButton');
+                if (this.shootMode === 'hold') {
+                    button.textContent = '🔫 Modo: Segurar';
+                    button.style.background = 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)';
+                } else {
+                    button.textContent = '🔫 Modo: Clique';
+                    button.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+                }
+            }
+
+            checkCheatCode() {
+                const input = document.getElementById('cheatCode');
+                const statusDiv = document.getElementById('cheatStatus');
+                const code = input.value.trim();
+                
+                if (code === 'Billy1314') {
+                    this.cheatMode = true;
+                    statusDiv.innerHTML = '✅ <span style="color: #ff00ff;">MODO GOD ATIVADO!</span>';
+                    statusDiv.style.animation = 'pulse 1s infinite';
+                    input.value = '';
+                    input.style.borderColor = '#ff00ff';
+                    input.style.background = '#ffe6ff';
+                    
+                    this.player.color = '#ff00ff';
+                    
+                    setTimeout(() => {
+                        statusDiv.innerHTML = '⚡ 1.000.000 tiros/seg + 100.000x pontos!';
+                    }, 2000);
+                    
+                } else if (code === 'WSPEED') {
+                    this.speedCheat = true;
+                    statusDiv.innerHTML = '✅ <span style="color: #00ffff;">VELOCIDADE INFINITA ATIVADA!</span>';
+                    statusDiv.style.animation = 'pulse 1s infinite';
+                    input.value = '';
+                    input.style.borderColor = '#00ffff';
+                    input.style.background = '#e6ffff';
+                    
+                    this.player.color = '#00ffff';
+                    
+                    // Atualizar velocidade dos inimigos existentes
+                    for (const enemy of this.enemies) {
+                        enemy.speed *= 50;
+                    }
+                    
+                    setTimeout(() => {
+                        statusDiv.innerHTML = '🚀 Tudo 50x mais rápido!';
+                    }, 2000);
+                    
+                } else if (code !== '') {
+                    statusDiv.innerHTML = '❌ <span style="color: #ff0000;">Código inválido!</span>';
+                    input.style.borderColor = '#ff0000';
+                    setTimeout(() => {
+                        statusDiv.innerHTML = '';
+                        input.style.borderColor = '#f093fb';
+                        input.style.background = 'white';
+                    }, 2000);
+                } else {
+                    statusDiv.innerHTML = '';
+                }
+            }
+
+            switchTab(tab) {
+                this.currentTab = tab;
+                
+                document.querySelectorAll('#scoreTab, #enemiesTab, #timeTab').forEach(btn => btn.classList.remove('active'));
+                document.getElementById(tab + 'Tab').classList.add('active');
+                
+                this.loadLeaderboard();
+            }
+
+            switchSpeed(speed) {
+                this.currentSpeedFilter = speed;
+                
+                document.querySelectorAll('#speedAllTab, #speed1Tab, #speed1\\.5Tab, #speed2Tab, #speed3Tab').forEach(btn => btn.classList.remove('active'));
+                
+                if (speed === 'all') {
+                    document.getElementById('speedAllTab').classList.add('active');
+                } else {
+                    document.getElementById(`speed${speed}Tab`).classList.add('active');
+                }
+                
+                this.loadLeaderboard();
+            }
+
+            switchGodMode(mode) {
+                this.currentGodModeFilter = mode;
+                
+                document.querySelectorAll('#godAllTab, #godNormalTab, #godGodTab').forEach(btn => btn.classList.remove('active'));
+                document.getElementById(`god${mode.charAt(0).toUpperCase() + mode.slice(1)}Tab`).classList.add('active');
+                
+                this.loadLeaderboard();
+            }
+
+            formatTime(seconds) {
+                const hours = Math.floor(seconds / 3600);
+                const minutes = Math.floor((seconds % 3600) / 60);
+                const secs = seconds % 60;
+                
+                if (hours > 0) {
+                    return `${hours}h ${minutes}m ${secs}s`;
+                } else if (minutes > 0) {
+                    return `${minutes}m ${secs}s`;
+                } else {
+                    return `${secs}s`;
+                }
+            }
+
+            async saveScore() {
+                const playerName = document.getElementById('shooterPlayerName').value.trim();
+                if (!playerName) {
+                    alert('Por favor, digite seu nome!');
+                    return;
+                }
+
+                try {
+                    const scoreData = {
+                        name: playerName,
+                        score: this.score,
+                        enemies: this.enemiesKilled,
+                        playTime: this.playTime,
+                        speed: this.speedMultiplier,
+                        godMode: this.cheatMode,
+                        speedCheat: this.speedCheat,
+                        accuracy: this.shotsFired > 0 ? Math.round((this.hits / this.shotsFired) * 100) : 0,
+                        date: new Date().toISOString()
+                    };
+
+                    await window.storage.set(`shooter_score_${Date.now()}`, JSON.stringify(scoreData), true);
+                    
+                    document.getElementById('shooterGameOverModal').style.display = 'none';
+                    await this.loadLeaderboard();
+                    this.restart();
+                } catch (error) {
+                    console.error('Erro ao salvar pontuação:', error);
+                    alert('Erro ao salvar pontuação. Tente novamente.');
+                }
+            }
+
+            async loadLeaderboard() {
+                try {
+                    const result = await window.storage.list('shooter_score_', true);
+                    
+                    if (!result || !result.keys || result.keys.length === 0) {
+                        document.getElementById('shooterLeaderboard').innerHTML = 
+                            '<li class="empty-leaderboard">Nenhuma pontuação ainda. Seja o primeiro!</li>';
+                        return;
+                    }
+
+                    const scores = [];
+                    for (const key of result.keys) {
+                        try {
+                            const data = await window.storage.get(key, true);
+                            if (data && data.value) {
+                                const scoreData = JSON.parse(data.value);
+                                if (!scoreData.playTime) scoreData.playTime = 0;
+                                if (!scoreData.speed) scoreData.speed = 1;
+                                if (scoreData.godMode === undefined) scoreData.godMode = false;
+                                if (scoreData.speedCheat === undefined) scoreData.speedCheat = false;
+                                scores.push(scoreData);
+                            }
+                        } catch (e) {
+                            console.error('Erro ao carregar pontuação:', e);
+                        }
+                    }
+
+                    // Filtrar por modo god
+                    let filteredScores = scores;
+                    if (this.currentGodModeFilter === 'god') {
+                        filteredScores = scores.filter(score => score.godMode === true);
+                    } else if (this.currentGodModeFilter === 'normal') {
+                        filteredScores = scores.filter(score => score.godMode !== true);
+                    }
+
+                    // Filtrar por velocidade
+                    if (this.currentSpeedFilter !== 'all') {
+                        filteredScores = filteredScores.filter(score => score.speed === this.currentSpeedFilter);
+                    }
+
+                    // Ordenar baseado na aba ativa
+                    if (this.currentTab === 'score') {
+                        filteredScores.sort((a, b) => b.score - a.score);
+                    } else if (this.currentTab === 'enemies') {
+                        filteredScores.sort((a, b) => b.enemies - a.enemies);
+                    } else if (this.currentTab === 'time') {
+                        filteredScores.sort((a, b) => b.playTime - a.playTime);
+                    }
+
+                    const top100 = filteredScores.slice(0, 100);
+
+                    if (top100.length === 0) {
+                        const speedText = this.currentSpeedFilter === 'all' ? '' : ` na velocidade ${this.currentSpeedFilter}x`;
+                        const godText = this.currentGodModeFilter === 'god' ? ' no modo GOD' : this.currentGodModeFilter === 'normal' ? ' no modo Normal' : '';
+                        document.getElementById('shooterLeaderboard').innerHTML = 
+                            `<li class="empty-leaderboard">Nenhuma pontuação${godText}${speedText} ainda. Seja o primeiro!</li>`;
+                        return;
+                    }
+
+                    const html = top100.map((score, index) => {
+                        const rankClass = index < 3 ? `rank-${index + 1}` : '';
+                        const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '';
+                        
+                        let mainStat = '';
+                        let subStats = '';
+                        
+                        // Badges
+                        let badges = '';
+                        if (this.currentGodModeFilter === 'all' && score.godMode) {
+                            badges += '<span style="background: linear-gradient(135deg, #ff00ff, #ff66ff); padding: 2px 6px; border-radius: 5px; font-size: 0.75em; margin-left: 5px; color: white; font-weight: bold;">👑 GOD</span>';
+                        }
+                        if (this.currentSpeedFilter === 'all') {
+                            const speedColor = this.getSpeedColor(score.speed);
+                            badges += `<span style="background: ${speedColor}; padding: 2px 6px; border-radius: 5px; font-size: 0.75em; margin-left: 5px; color: white; font-weight: bold;">${score.speed}x</span>`;
+                        }
+                        if (score.speedCheat) {
+                            badges += '<span style="background: linear-gradient(135deg, #00ffff, #00cccc); padding: 2px 6px; border-radius: 5px; font-size: 0.75em; margin-left: 5px; color: white; font-weight: bold;">🚀 WSPEED</span>';
+                        }
+                        
+                        if (this.currentTab === 'score') {
+                            mainStat = score.score;
+                            subStats = `${score.enemies} mortos • ${this.formatTime(score.playTime)}`;
+                        } else if (this.currentTab === 'enemies') {
+                            mainStat = score.enemies;
+                            subStats = `${score.score} pts • ${this.formatTime(score.playTime)}`;
+                        } else if (this.currentTab === 'time') {
+                            mainStat = this.formatTime(score.playTime);
+                            subStats = `${score.score} pts • ${score.enemies} mortos`;
+                        }
+                        
+                        return `
+                            <li class="leaderboard-item ${rankClass}">
+                                <span class="rank">${medal || (index + 1)}</span>
+                                <div class="player-info">
+                                    <div class="player-name">${score.name}${badges}</div>
+                                    <div style="color: #666; font-size: 0.9em;">
+                                        ${subStats}
+                                    </div>
+                                </div>
+                                <span class="player-score">${mainStat}</span>
+                            </li>
+                        `;
+                    }).join('');
+
+                    document.getElementById('shooterLeaderboard').innerHTML = html;
+                } catch (error) {
+                    console.error('Erro ao carregar placar:', error);
+                    document.getElementById('shooterLeaderboard').innerHTML = 
+                        '<li class="empty-leaderboard">Erro ao carregar placar</li>';
+                }
+            }
+
+            getSpeedColor(speed) {
+                if (speed >= 3) return '#ff0000';
+                if (speed >= 2) return '#ff8800';
+                if (speed >= 1.5) return '#ffaa00';
+                return '#00cc00';
+            }
+
+            restart() {
+                this.player.y = this.canvas.height / 2;
+                this.bullets = [];
+                this.enemies = [];
+                this.particles = [];
+                this.score = 0;
+                this.enemiesKilled = 0;
+                this.enemiesEscaped = 0;
+                this.shotsFired = 0;
+                this.hits = 0;
+                this.gameOver = false;
+                this.startTime = Date.now();
+                this.playTime = 0;
+                this.enemySpawnTimer = 0;
+                this.enemySpawnInterval = 120;
+                this.speedMultiplier = 1;
+                this.currentSpeedIndex = 0;
+                this.shootMode = 'click';
+                this.isMouseDown = false;
+                this.shootCooldown = 0;
+                this.cheatMode = false;
+                this.speedCheat = false;
+                
+                // Resetar player color
+                this.player.color = '#00ff00';
+                
+                // Resetar input de código
+                const input = document.getElementById('cheatCode');
+                const statusDiv = document.getElementById('cheatStatus');
+                if (input) {
+                    input.value = '';
+                    input.style.borderColor = '#f093fb';
+                    input.style.background = 'white';
+                }
+                if (statusDiv) {
+                    statusDiv.innerHTML = '';
+                }
+                
+                // Resetar botão de velocidade
+                const speedBtn = document.getElementById('speedButton');
+                if (speedBtn) {
+                    speedBtn.textContent = '⚡ Velocidade: 1x';
+                    speedBtn.style.background = 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)';
+                }
+                
+                // Resetar botão de modo de tiro
+                const shootBtn = document.getElementById('shootModeButton');
+                if (shootBtn) {
+                    shootBtn.textContent = '🔫 Modo: Clique';
+                    shootBtn.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+                }
+                
+                this.updateStats();
+                this.gameLoop();
+            }
+        }
+
+        // Initialize
+        let tetrisGame = new TetrisGame();
+        let shooterGame = null;
+    </script>
+</body>
+</html>
